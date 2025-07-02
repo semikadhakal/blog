@@ -1,0 +1,56 @@
+name: Build and Push to DockerHub
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [dev]
+
+jobs:
+  # Check conventional commits on PRs
+  check-commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check commit message
+        run: |
+          echo "Checking if commit message starts with feat:, fix:, docs:, etc."
+          git log --format=%s -n 1 | grep -E "^(feat|fix|docs|style|refactor|test|chore):"
+
+  #  Build and Push to DockerHub on dev or main push
+  build-and-push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [frontend, backend1, backend2]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.semikadhakal123 }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+      - name: Determine tag
+        id: vars
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "TAG=latest" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push image for ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ secrets.semikadhakal123 }}/${{ matrix.service }}:${{ steps.vars.outputs.TAG }}
+            ${{ secrets.semikadhakal123 }}/${{ matrix.service }}:${{ github.sha }}
+
