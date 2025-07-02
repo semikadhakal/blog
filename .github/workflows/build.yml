@@ -7,24 +7,33 @@ on:
     branches: [dev]
 
 jobs:
-  # Check conventional commits on PRs
+  # Check all commit messages on pull request to dev branch
   check-commits:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check commit message
-        run: |
-          echo "Checking if commit message starts with feat:, fix:, docs:, etc."
-          git log --format=%s -n 1 | grep -E "^(feat|fix|docs|style|refactor|test|chore):"
 
-  #  Build and Push to DockerHub on dev or main push
+      - name: Check all commit messages in PR
+        run: |
+          echo "Checking commit messages in PR..."
+          git fetch origin ${{ github.event.pull_request.head.ref }}
+          git log origin/${{ github.event.pull_request.head.ref }} --format=%s | \
+            grep -Ev "^(feat|fix|docs|style|refactor|test|chore):" && {
+              echo "❌ Invalid commit messages found!"
+              exit 1
+            } || {
+              echo "✅ All commit messages are valid."
+            }
+
+  # Build and push Docker images on push to main or dev
   build-and-push:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         service: [frontend, backend1, backend2]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,9 +41,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.semikadhakal123 }}
+          username: semikadhakal123
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
 
       - name: Determine tag
         id: vars
@@ -42,7 +50,9 @@ jobs:
           if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
             echo "TAG=latest" >> $GITHUB_OUTPUT
           else
-            echo "TAG=dev" >> $GITHUB_OUTPUT
+            BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}" | tr / -)
+            SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+            echo "TAG=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push image for ${{ matrix.service }}
@@ -51,6 +61,6 @@ jobs:
           context: ./${{ matrix.service }}
           push: true
           tags: |
-            ${{ secrets.semikadhakal123 }}/${{ matrix.service }}:${{ steps.vars.outputs.TAG }}
-            ${{ secrets.semikadhakal123 }}/${{ matrix.service }}:${{ github.sha }}
+            semikadhakal123/${{ matrix.service }}:${{ steps.vars.outputs.TAG }}
+            semikadhakal123/${{ matrix.service }}:${{ github.sha }}
 
