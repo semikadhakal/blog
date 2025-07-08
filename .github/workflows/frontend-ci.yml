@@ -1,0 +1,41 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'frontend/**'
+
+env:
+  BUILD_DIR: frontend/dist
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Restore Yarn cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/node_modules
+            ~/.cache/yarn
+          key: frontend-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn
+
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: frontend/dist
+
