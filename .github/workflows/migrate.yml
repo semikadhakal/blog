@@ -1,0 +1,26 @@
+name: DB Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'migrate or rollback'
+        required: true
+        default: 'migrate'
+
+jobs:
+  db-migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run migration or rollback
+        run: |
+          if [ "${{ github.event.inputs.action }}" == "migrate" ]; then
+            psql ${{ secrets.DATABASE_URL }} -f backend/db/migrate.sql
+          else
+            psql ${{ secrets.DATABASE_URL }} -f backend/db/rollback.sql
+          fi
+
