@@ -22,8 +22,7 @@ env:
 
 jobs:
   build-app:
-    runs-on: [self-hosted, runner]
-
+    runs-on: [self-hosted, runner]  # 🟢 Make sure runner has both these labels
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -72,7 +71,7 @@ jobs:
 
   docker-and-deploy:
     needs: build-app
-    runs-on: [self-hosted, semika]
+    runs-on: [self-hosted, semika]  # 🟢 Must match runner label
     if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
@@ -126,16 +125,16 @@ jobs:
           echo "$SSH_PRIVATE_KEY" > key.pem
           chmod 600 key.pem
           ssh -o StrictHostKeyChecking=no -i key.pem $REMOTE_USER@$REMOTE_HOST << 'EOF'
-            docker pull semikadhakal123/backend1:dev-latest
-            docker pull semikadhakal123/backend2:dev-latest
-            docker pull semikadhakal123/frontend:dev-latest
+            docker pull semikadhakal123/backend1:latest
+            docker pull semikadhakal123/backend2:latest
+            docker pull semikadhakal123/frontend:latest
             docker-compose -f ~/deployment/docker-compose.yml up -d
           EOF
 
   release:
     if: github.ref == 'refs/heads/main'
     needs: docker-and-deploy
-    runs-on: [self-hosted, runner]
+    runs-on: [self-hosted, runner]  # ✅ Same as build-app
     steps:
       - name: Checkout
         uses: actions/checkout@v3
